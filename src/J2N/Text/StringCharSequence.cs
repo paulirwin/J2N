@@ -28,7 +28,7 @@ namespace J2N.Text
     /// <summary>
     /// A wrapper class that represents a <see cref="string"/> and implements <see cref="ICharSequence"/>.
     /// </summary>
-    public class StringCharSequence : ICharSequence, 
+    public sealed class StringCharSequence : ICharSequence,
         IComparable<ICharSequence>, IComparable,
         IComparable<string>, IComparable<StringBuilder>, IComparable<char[]>,
         IEquatable<ICharSequence>,

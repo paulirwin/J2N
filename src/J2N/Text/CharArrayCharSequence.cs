@@ -29,7 +29,7 @@ namespace J2N.Text
     /// <summary>
     /// A wrapper class that represents a <see cref="T:char[]"/> and implements <see cref="ICharSequence"/>.
     /// </summary>
-    public class CharArrayCharSequence : ICharSequence,
+    public sealed class CharArrayCharSequence : ICharSequence,
         IComparable<ICharSequence>, IComparable,
         IComparable<string>, IComparable<StringBuilder>, IComparable<char[]>,
         IEquatable<ICharSequence>,
