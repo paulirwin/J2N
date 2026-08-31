@@ -5,6 +5,8 @@
 parameters:
   osName: 'Windows' # The name of the operating system for display purposes.
   testTargetFramework: '' # A target framework indicating which framework tests will be run on. See: https://docs.microsoft.com/en-us/dotnet/standard/frameworks.
+  runtimeName: '' # An optional display name identifying the runtime the tests are executed on, when it differs from testTargetFramework (e.g. 'net11.0-preview'). Used to keep test results from colliding.
+  previewSdkChannel: '' # An optional .NET SDK channel (e.g. '11.0.x') to additionally install as a preview release, so the testTargetFramework assemblies roll forward onto it.
   binaryArtifactName: 'testbinaries' # The name of the Azure DevOps build artifact where the test assemblies will be downloaded from. Default 'testbinaries'.
   testResultsArtifactName: 'testresults' # The name of the Azure DevOps build artifact where the test results will be published. Default 'testresults'.
   vsTestPlatform: 'x64' # Target platform architecture used for test execution. Valid values are x86, x64, and ARM.
@@ -57,6 +59,17 @@ steps:
   parameters:
     sdkVersion: '$(DotNetSdkVersion)'
     performMultiLevelLookup: '$(PerformMultiLevelLookup)'
+
+    # Installs a prerelease SDK alongside the one above, so the tests built for testTargetFramework can be
+    # rolled forward onto it. Only used by the preview jobs, which supply previewSdkChannel.
+- task: UseDotNet@2
+  displayName: 'Use .NET SDK ${{ parameters.previewSdkChannel }} (preview)'
+  inputs:
+    packageType: 'sdk'
+    version: '${{ parameters.previewSdkChannel }}'
+    includePreviewVersions: true
+    performMultiLevelLookup: '${{ variables.PerformMultiLevelLookup }}'
+  condition: and(succeeded(), ne('${{ parameters.previewSdkChannel }}', ''))
 
     # Hack: .NET 8+ no longer installs the x86 bits and they must be installed separately. However, it is not
     # trivial to get it into the path and to get it to pass the minimum SDK version check in runbuild.ps1.
@@ -160,6 +173,9 @@ steps:
     $framework = '${{ parameters.testTargetFramework }}'
     $testBinaryRootDirectory = "$(System.DefaultWorkingDirectory)"
     $testResultsArtifactDirectory = "${{ format('$(Build.ArtifactStagingDirectory)/{0}',parameters.testResultsArtifactName) }}"
+    # The subdirectory the results are written under. This is the runtime the tests ran on, which is only
+    # different from $framework when the tests are rolled forward onto a preview runtime.
+    $resultsFramework = '${{ iif(ne(parameters.runtimeName, ''), parameters.runtimeName, parameters.testTargetFramework) }}'
     $testPlatform = '${{ parameters.vsTestPlatform }}'
     $testOSName = '${{ parameters.osName }}'
     $testBinaryFilesPattern = '${{ parameters.testBinaryFilesPattern }}'
@@ -204,7 +220,7 @@ steps:
                 }
             }
             
-            $testResultDirectory = "$testResultsArtifactDirectory/$testOSName/$framework/$testPlatform/$testName"
+            $testResultDirectory = "$testResultsArtifactDirectory/$testOSName/$resultsFramework/$testPlatform/$testName"
             if (!(Test-Path "$testResultDirectory")) {
                 New-Item "$testResultDirectory" -ItemType Directory -Force
             }
@@ -249,8 +265,14 @@ steps:
     }
     
     $global:LASTEXITCODE = 0 # Force the script to continue on error
-  displayName: 'dotnet test ${{ parameters.testTargetFramework }}'
+  displayName: 'dotnet test ${{ parameters.testTargetFramework }} on ${{ iif(ne(parameters.runtimeName, ''), parameters.runtimeName, parameters.testTargetFramework) }}'
   ignoreLASTEXITCODE: true
+  # When running against a preview runtime, the test assemblies are built for an older target framework,
+  # so they must roll forward onto the newer (prerelease) runtime rather than requiring an exact match.
+  # These are empty for every other job, which leaves the default roll-forward behavior in place.
+  env:
+    DOTNET_ROLL_FORWARD: ${{ iif(ne(parameters.previewSdkChannel, ''), 'LatestMajor', '') }}
+    DOTNET_ROLL_FORWARD_TO_PRERELEASE: ${{ iif(ne(parameters.previewSdkChannel, ''), '1', '') }}
 
 #- template: 'show-all-files.yml' # Uncomment for debugging
 
@@ -271,7 +293,7 @@ steps:
 - template: 'publish-test-results-for-test-projects.yml'
   parameters:
     osName: '${{ parameters.osName }}'
-    framework: '${{ parameters.testTargetFramework }}'
+    framework: '${{ iif(ne(parameters.runtimeName, ''), parameters.runtimeName, parameters.testTargetFramework) }}'
     testPlatform: '${{ parameters.vsTestPlatform }}'
 
 - pwsh: |
