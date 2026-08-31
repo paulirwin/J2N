@@ -58,14 +58,6 @@ steps:
     sdkVersion: '$(DotNetSdkVersion)'
     performMultiLevelLookup: '$(PerformMultiLevelLookup)'
 
-- task: UseDotNet@2
-  displayName: 'Use .NET SDK 10.0.400'
-  inputs:
-    packageType: 'sdk'
-    version: '10.0.400'
-    performMultiLevelLookup: '${{ variables.PerformMultiLevelLookup }}'
-  condition: and(succeeded(), contains('${{ parameters.testTargetFramework }}', 'net10.'))
-
     # Hack: .NET 8+ no longer installs the x86 bits and they must be installed separately. However, it is not
     # trivial to get it into the path and to get it to pass the minimum SDK version check in runbuild.ps1.
     # So, we install it afterward and set the environment variable so the above SDK can delegate to it.
