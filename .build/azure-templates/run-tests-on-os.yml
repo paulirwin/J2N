@@ -59,10 +59,10 @@ steps:
     performMultiLevelLookup: '$(PerformMultiLevelLookup)'
 
 - task: UseDotNet@2
-  displayName: 'Use .NET SDK 10.0.202'
+  displayName: 'Use .NET SDK 10.0.400'
   inputs:
     packageType: 'sdk'
-    version: '10.0.202'
+    version: '10.0.400'
     performMultiLevelLookup: '${{ variables.PerformMultiLevelLookup }}'
   condition: and(succeeded(), contains('${{ parameters.testTargetFramework }}', 'net10.'))
 
@@ -71,7 +71,7 @@ steps:
     # So, we install it afterward and set the environment variable so the above SDK can delegate to it.
     # This code only works on Windows.
 - pwsh: |
-    $sdkVersion = '10.0.202'
+    $sdkVersion = '10.0.400'
     $architecture = '${{ parameters.vsTestPlatform }}'
     $installScriptPath = "${env:AGENT_TEMPDIRECTORY}/dotnet-install.ps1"
     $installScriptUrl = "https://raw.githubusercontent.com/dotnet/install-scripts/main/src/dotnet-install.ps1"
@@ -80,7 +80,7 @@ steps:
     $installPath = "${env:ProgramFiles(x86)}/dotnet"
     & $installScriptPath -Version $sdkVersion -Architecture $architecture -InstallDir $installPath
     Write-Host "##vso[task.setvariable variable=DOTNET_ROOT_X86;]$installPath"
-  displayName: 'Use .NET SDK 10.0.202 (x86)'
+  displayName: 'Use .NET SDK 10.0.400 (x86)'
   condition: and(succeeded(), contains('${{ parameters.testTargetFramework }}', 'net10.'), eq('${{ parameters.vsTestPlatform }}', 'x86'))
 
 - task: UseDotNet@2
